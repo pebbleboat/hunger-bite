@@ -1,0 +1,102 @@
+"use client";
+
+import HungerBiteNavbar from "@/components/hungerBite/HungerBiteNavbar";
+import Loader from "@/shared/Loader";
+import Text from "@/shared/heading/Text";
+import CartSidebar from "./components/CartSidebar";
+import MenuCategoryFilters from "./components/MenuCategoryFilters";
+import MenuItemCard from "./components/MenuItemCard";
+import { useHook } from "./useHook";
+
+export function Menu() {
+  const {
+    outlet,
+    ready,
+    search,
+    setSearch,
+    activeCategory,
+    setActiveCategory,
+    categories,
+    filteredItems,
+    isLoading,
+    cartLines,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    subtotal,
+    tax,
+    total,
+    formatPrice,
+    cartCount,
+    handleReviewOrder,
+  } = useHook();
+
+  if (!ready) {
+    return <Loader className="h-screen" size={28} variant="full-screen" />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <HungerBiteNavbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search menu"
+        cartCount={cartCount}
+      />
+
+      <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
+        <div className="mb-6 lg:hidden">
+          <Text size="sm" variant="tertiary">
+            {outlet?.name}
+          </Text>
+        </div>
+
+        <div className="mb-6">
+          <MenuCategoryFilters
+            categories={categories}
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+          />
+        </div>
+
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            {isLoading ? (
+              <Loader className="py-20" size={32} />
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredItems.map((item) => (
+                  <MenuItemCard
+                    key={item.id}
+                    item={item}
+                    formatPrice={formatPrice}
+                    onAddToCart={addToCart}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && filteredItems.length === 0 ? (
+              <Text variant="secondary" className="py-16 text-center">
+                No menu items match your search or filter.
+              </Text>
+            ) : null}
+          </div>
+
+          <aside className="w-full shrink-0 lg:w-[340px] xl:w-[380px]">
+            <CartSidebar
+              cartLines={cartLines}
+              formatPrice={formatPrice}
+              subtotal={subtotal}
+              tax={tax}
+              total={total}
+              onUpdateQuantity={updateQuantity}
+              onRemove={removeFromCart}
+              onReviewOrder={handleReviewOrder}
+            />
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
