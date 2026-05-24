@@ -9,15 +9,13 @@ export type Outlet = {
   featured?: boolean;
 };
 
-export type OutletFilterId = "nearby" | "top-rated" | "cuisine" | "more-filters";
+export type OutletFilterId =
+  | "nearby"
+  | "top-rated"
+  | "cuisine"
+  | "more-filters";
 
-export type MenuCategoryId =
-  | "all"
-  | "main"
-  | "sides"
-  | "drinks"
-  | "desserts"
-  | "specials";
+export type MenuCategoryId = "all" | string;
 
 export type MenuItem = {
   id: string;
@@ -25,7 +23,8 @@ export type MenuItem = {
   description: string;
   price: number;
   imageUrl: string;
-  category: Exclude<MenuCategoryId, "all">;
+  category: string;
+  dietary?: string;
   rating?: number;
 };
 
@@ -68,14 +67,14 @@ export type PlacedOrder = {
 };
 
 export type OrderRow = {
-    _id: string;
-    item: string;
-    quantity: number;
-    status?: string;
-    outletId?: string;
-  };
-  
-  export type LoginPayload = {
+  _id: string;
+  item: string;
+  quantity: number;
+  status?: string;
+  outletId?: string;
+};
+
+export type LoginPayload = {
   email: string;
   password: string;
   role: string;
@@ -91,7 +90,7 @@ export type ResetPasswordPayload = {
   password: string;
   role: string;
 };
-  
+
 export type SignupPayload = {
   name: string;
   email: string;

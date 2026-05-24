@@ -1,3 +1,10 @@
+export enum MicroService {
+  AUTH = "auth",
+  POS = "pos",
+  ORDER = "order",
+  CATALOG = "catalog",
+}
+
 export const storageKeys = {
   DEVICE_ID: "device_id",
   REGISTERED_DEVICE_ID: "registered_device_id",

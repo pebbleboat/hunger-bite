@@ -1,8 +1,8 @@
 "use client";
 
+import { getMenuItems } from "@/lib/apis";
 import type { CartLine, MenuCategoryId, MenuItem, Outlet } from "@/lib/types";
 import { showToast } from "@/shared/ToastMessage";
-import { MOCK_MENU_ITEMS } from "@/utils/mockMenuItems";
 import { getCart, persistCart } from "@/utils/cartSession";
 import { formatPrice, TAX_RATE } from "@/utils/formatPrice";
 import { getSelectedOutlet } from "@/utils/outletSession";
@@ -11,17 +11,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-export const MENU_CATEGORIES: { id: MenuCategoryId; label: string }[] = [
-  { id: "all", label: "All Items" },
-  { id: "main", label: "Main Dishes" },
-  { id: "sides", label: "Sides" },
-  { id: "drinks", label: "Drinks" },
-  { id: "desserts", label: "Desserts" },
-  { id: "specials", label: "Specials" },
-];
-
-async function fetchMenuItems(_outletId: string): Promise<MenuItem[]> {
-  return MOCK_MENU_ITEMS;
+function formatCategoryLabel(value: string): string {
+  return value
+    .split(/[_-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function useHook() {
@@ -29,8 +24,7 @@ export function useHook() {
   const [outlet, setOutlet] = useState<Outlet | null>(null);
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] =
-    useState<MenuCategoryId>("all");
+  const [activeCategory, setActiveCategory] = useState<MenuCategoryId>("all");
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
 
   useEffect(() => {
@@ -52,15 +46,29 @@ export function useHook() {
     persistCart(cartLines);
   }, [cartLines, ready]);
 
-  const { data: menuItems = [], isLoading } = useQuery({
-    queryKey: queryKeys.menu.list(
-      outlet?.id ?? "",
-      activeCategory,
-      search,
-    ),
-    queryFn: () => fetchMenuItems(outlet!.id),
+  const {
+    data: menuItems = [],
+    isFetching: isMenuFetching,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.menu.list(outlet?.id ?? ""),
+    queryFn: () => getMenuItems(outlet!.id),
     enabled: Boolean(outlet?.id),
   });
+
+  const isLoading = Boolean(outlet?.id) && isMenuFetching;
+
+  const categories = useMemo(() => {
+    const unique = Array.from(new Set(menuItems.map((item) => item.category)));
+    return [
+      { id: "all" as const, label: "All Items" },
+      ...unique.map((id) => ({
+        id,
+        label: formatCategoryLabel(id),
+      })),
+    ];
+  }, [menuItems]);
 
   const filteredItems = useMemo(() => {
     let list = [...menuItems];
@@ -72,7 +80,8 @@ export function useHook() {
       list = list.filter(
         (item) =>
           item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q),
+          item.description.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q),
       );
     }
     return list;
@@ -138,9 +147,11 @@ export function useHook() {
     setSearch,
     activeCategory,
     setActiveCategory,
-    categories: MENU_CATEGORIES,
+    categories,
     filteredItems,
     isLoading,
+    isError,
+    refetch,
     cartLines,
     addToCart,
     updateQuantity,

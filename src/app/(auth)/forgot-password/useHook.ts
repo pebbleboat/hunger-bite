@@ -1,7 +1,6 @@
 import { requestPasswordReset, resetPassword } from "@/lib/apis";
-import { HUNGERBITE_AUTH_ROLE } from "@/lib/apiConstant";
 import { showToast } from "@/shared/ToastMessage";
-import { apiErrorMessage } from "@/utils/apiError";
+import { apiErrorMessage } from "@/lib/apiConstant";
 import {
   forgotPasswordEmailInitialValues,
   forgotPasswordEmailSchema,
@@ -12,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { HUNGERBITE_AUTH_ROLE } from "@/utils/constants";
 
 export type ForgotPasswordStep = "email" | "reset";
 

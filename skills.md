@@ -15,6 +15,7 @@ Use this document when adding or changing code in **hungerBite** (product name: 
 | Path alias | `@/*` → `./src/*` |
 | Order API | `NEXT_PUBLIC_ORDER_URL` / `NEXT_PUBLIC_ORDER_API_URL` (default `http://127.0.0.1:8081`) |
 | Auth API | `NEXT_PUBLIC_AUTH_API_URL` (default `http://localhost:8080`) |
+| Catalog API | `NEXT_PUBLIC_CATALOG_API_URL` (default `http://localhost:8083`) |
 | Auth role | Always **`customer`** — never show a role field on login/signup |
 
 ---
@@ -50,16 +51,16 @@ src/
 ├── components/                 # App-level components (auth shell, providers, …)
 ├── shared/                     # Reusable UI (Button, InputField, Text, …)
 ├── lib/
-│   ├── apiConstant.ts          # Base URLs + path builders + HUNGERBITE_AUTH_ROLE
-│   ├── axiosInstance.ts        # Single axios client + Bearer interceptor
-│   ├── apis.ts                 # All HTTP functions (orders + auth)
+│   ├── apiConstant.ts          # Service base URLs, path builders, apiErrorMessage, HUNGERBITE_AUTH_ROLE
+│   ├── axiosInstance.ts        # Cached axios clients per MicroService + Bearer interceptor
+│   ├── apis.ts                 # All HTTP functions (auth, catalog, order)
 │   └── types.ts                # API payload/response types
 ├── utils/
 │   ├── schema.ts               # Formik initial values + Yup schemas
 │   ├── authSession.ts          # Token in cookie + localStorage
 │   ├── formikFieldError.ts
 │   ├── queryKeys.ts
-│   └── enum.ts                 # storageKeys, etc.
+│   └── enum.ts                 # MicroService, storageKeys
 ├── styles/globals.css
 └── middleware.ts               # Auth guard
 ```
@@ -91,16 +92,17 @@ For each feature (e.g. `orderForm`, `(auth)/login`):
 ## API layer
 
 - **Direct browser calls** to backend services. Do **not** use Next.js rewrites/proxy for API traffic.
-- **One** axios instance: `lib/axiosInstance.ts` (JSON headers + `Authorization: Bearer` from cookie when present).
-- **Per-request `baseURL`** in `lib/apis.ts` because auth (`8080`) and order (`8081`) hosts differ:
+- **Cached axios clients** per `MicroService` in `lib/axiosInstance.ts` (JSON headers + `Authorization: Bearer` from cookie when present).
+- **Service routing** via `getServiceBaseUrl(MicroService.*)` in `lib/apiConstant.ts` — auth (`8080`), order (`8081`), catalog (`8083`).
 
 ```ts
-await axiosInstance.post(AUTH_PATHS.login, payload, { baseURL: AUTH_API_BASE_URL });
-await axiosInstance.get(API_PATHS.outletOrders(id), { baseURL: ORDER_API_BASE_URL });
+await axiosInstance(MicroService.AUTH).post(AUTH_PATHS.login, payload);
+await axiosInstance(MicroService.CATALOG).get(API_PATHS.outlets);
+await axiosInstance(MicroService.ORDER).get(API_PATHS.outletOrders(id));
 ```
 
-- **All HTTP functions** live in **`lib/apis.ts` only**. Do not add `src/apis/apis.ts` or a second axios client.
-- Path builders and env defaults live in **`lib/apiConstant.ts`**.
+- **All HTTP functions** live in **`lib/apis.ts` only**. Do not add a second axios client or duplicate API modules.
+- Path builders, env defaults, and `apiErrorMessage` live in **`lib/apiConstant.ts`**.
 
 ---
 
@@ -137,15 +139,16 @@ await axiosInstance.get(API_PATHS.outletOrders(id), { baseURL: ORDER_API_BASE_UR
 
 - Route: `/select-outlet` → `(dashboard)/select-outlet/page.tsx` → `@/app/selectOutlet`.
 - UI: `HungerBiteNavbar` + welcome header + `FilterBar` + outlet grid (`FeaturedOutletCard`, `OutletCard`).
-- Mock data: `utils/mockOutlets.ts` until outlet APIs are added to `lib/apis.ts`.
-- Uses `useQuery` in `selectOutlet/useHook.ts`; swap `fetchOutlets` when API is ready.
+- Outlets: `getOutlets()` in `lib/apis.ts` → `axiosInstance(MicroService.CATALOG).get(API_PATHS.outlets)` (maps catalog records to `Outlet` UI type).
+- Uses `useQuery` in `selectOutlet/useHook.ts` with `queryKeys.outlets.list()`; client-side filter/search in the hook.
 - Dashboard layout skips `PageWrapper` for `/select-outlet` and `/menu` (custom shell).
 
 ## Menu screen (`/menu`)
 
 - Route: `(dashboard)/menu/page.tsx` → `@/app/menu`.
 - Layout: `HungerBiteNavbar` (search placeholder **Search menu**, Home active) + category chips + **3-column menu grid** + **CartSidebar** (~380px).
-- Mock data: `utils/mockMenuItems.ts`; swap `fetchMenuItems` in `menu/useHook.ts` when API is ready.
+- Menu items: `getMenuItems(outletId)` in `lib/apis.ts` → `axiosInstance(MicroService.CATALOG).get(API_PATHS.menuItems(outletId))`; only `available` items are shown.
+- Uses `useQuery` in `menu/useHook.ts` with `queryKeys.menu.list(outletId)`; category chips are built from API categories; search/filter client-side.
 - Cart state is local in `useHook` until order APIs exist; all copy via `Text`.
 - Components: `MenuCategoryFilters`, `MenuItemCard` (`CardWrapper`), `CartSidebar`.
 - **Review Order** → `/finish-order`; cart persisted in `utils/cartSession.ts`.

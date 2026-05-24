@@ -11,7 +11,7 @@ import { formatPrice, TAX_RATE } from "@/utils/formatPrice";
 import { getLocalItem } from "@/utils/localstorage";
 import { getSelectedOutlet } from "@/utils/outletSession";
 import { showToast } from "@/shared/ToastMessage";
-import { apiErrorMessage } from "@/utils/apiError";
+import { apiErrorMessage } from "@/lib/apiConstant";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";

@@ -58,15 +58,15 @@ const HungerBiteNavbar = ({
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-8">
         <Link
           href="/select-outlet"
-          className="flex shrink-0 items-center gap-2"
+          className="flex shrink-0 items-center"
           aria-label="HungerBite home"
         >
-          <SvgLogo className="h-8 w-auto sm:h-9" />
+          <SvgLogo className="h-8 w-auto sm:h-10" />
           <Text
             as="span"
             size="xl"
             type="bold"
-            className="tracking-tight text-brand-950"
+            className="tracking-tight text-brand-950 -ml-1"
           >
             HungerBite
           </Text>

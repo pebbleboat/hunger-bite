@@ -1,21 +1,16 @@
 "use client";
 
+import { getOutlets } from "@/lib/apis";
 import type { Outlet, OutletFilterId } from "@/lib/types";
 import { showToast } from "@/shared/ToastMessage";
 import type { AuthUser } from "@/utils/authSession";
 import { storageKeys } from "@/utils/enum";
 import { getLocalItem } from "@/utils/localstorage";
-import { MOCK_OUTLETS } from "@/utils/mockOutlets";
 import { persistSelectedOutlet } from "@/utils/outletSession";
 import { queryKeys } from "@/utils/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-
-/** Replace with lib/apis outlet list when API is available */
-async function fetchOutlets(): Promise<Outlet[]> {
-  return MOCK_OUTLETS;
-}
 
 function filterOutlets(
   outlets: Outlet[],
@@ -62,9 +57,14 @@ export function useHook() {
     user?.email?.split("@")[0] ??
     "there";
 
-  const { data: outlets = [], isLoading } = useQuery({
-    queryKey: queryKeys.outlets.list(activeFilter, search),
-    queryFn: fetchOutlets,
+  const {
+    data: outlets = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.outlets.list(),
+    queryFn: getOutlets,
   });
 
   const filteredOutlets = useMemo(
@@ -96,6 +96,8 @@ export function useHook() {
     standard,
     outletCount: filteredOutlets.length,
     isLoading,
+    isError,
+    refetch,
     selectingId,
     handleSelectOutlet,
   };

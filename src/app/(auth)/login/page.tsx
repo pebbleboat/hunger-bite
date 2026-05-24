@@ -12,6 +12,7 @@ import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { FiArrowRight, FiEye, FiEyeOff, FiLock, FiMail } from "react-icons/fi";
 import { useHook } from "./useHook";
+import { SvgLogo } from "@/assets/svgs";
 
 export default function LoginPage() {
   const { formik, isSubmitting } = useHook();
@@ -20,14 +21,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white via-white to-brand-50 px-4 py-12">
       <header className="mb-8 flex flex-col items-center text-center">
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-950 text-lg font-semibold text-white shadow-md"
-          aria-hidden
-        >
-          <Text as="span" variant="white" className="font-mono leading-none">
-            &gt;_
-          </Text>
-        </div>
+        <SvgLogo className="h-10 w-auto sm:h-14" />
+
         <Text
           as="h1"
           size="3xl"

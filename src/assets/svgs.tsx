@@ -10,6 +10,13 @@ export const SvgLogo = ({ className, ...props }: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <circle cx="16" cy="16" r="14" fill="#0e214d" />
-    <circle cx="32" cy="16" r="10" fill="#ffffff" strokeWidth={1.5} />
+    <circle
+      cx="28"
+      cy="16"
+      r="7"
+      fill="#ffffff"
+      stroke="#0e214d"
+      strokeWidth={1.5}
+    />
   </svg>
 );

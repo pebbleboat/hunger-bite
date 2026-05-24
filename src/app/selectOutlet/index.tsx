@@ -1,7 +1,7 @@
 "use client";
 
 import HungerBiteNavbar from "@/components/hungerBite/HungerBiteNavbar";
-import Loader from "@/shared/Loader";
+import EmptyState from "@/shared/EmptyState";
 import Text from "@/shared/heading/Text";
 import FeaturedOutletCard from "./components/FeaturedOutletCard";
 import FilterBar from "./components/FilterBar";
@@ -19,9 +19,30 @@ export function SelectOutlet() {
     standard,
     outletCount,
     isLoading,
+    isError,
+    refetch,
     selectingId,
     handleSelectOutlet,
   } = useHook();
+
+  const outlets = [...(featured ? [featured] : []), ...standard];
+
+  const emptyStateData = isError
+    ? {
+        title: "Could not load outlets",
+        subtitle:
+          "Check that the catalog service is running and try again.",
+        btnProps: {
+          btnName: "Try again",
+          onClick: () => refetch(),
+        },
+      }
+    : {
+        title: search.trim() ? "No outlets found" : "No outlets available",
+        subtitle: search.trim()
+          ? "No outlets match your search. Try a different filter or keyword."
+          : "No outlets available yet.",
+      };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,9 +66,12 @@ export function SelectOutlet() {
           />
         </div>
 
-        {isLoading ? (
-          <Loader className="py-20" size={32} variant="full-screen" />
-        ) : (
+        <EmptyState
+          pageData={isLoading ? null : isError ? [] : outlets}
+          data={emptyStateData}
+          hideBtn={!isError}
+          loaderClass="py-20"
+        >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {featured ? (
               <FeaturedOutletCard
@@ -64,13 +88,7 @@ export function SelectOutlet() {
               />
             ))}
           </div>
-        )}
-
-        {!isLoading && outletCount === 0 ? (
-          <Text variant="secondary" className="py-12 text-center">
-            No outlets match your search. Try a different filter or keyword.
-          </Text>
-        ) : null}
+        </EmptyState>
       </div>
     </div>
   );

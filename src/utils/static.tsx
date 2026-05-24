@@ -1,4 +1,7 @@
 
+import Img from "@/shared/Img";
+import { FaArrowLeft } from "react-icons/fa";
+
 export const ErrorMessage = {
   REQUIRED: "This field is mandatory",
   INVALID_EMAIL: "Invalid email address",
@@ -16,4 +19,22 @@ export const Regex = {
   AT_LEAST_ONE_NUMBER: /^(?=.*\d)/,
   AT_LEAST_ONE_SPECIAL_CHAR: /^(?=.*[#?!@$%^&*-]).*$/,
   ALPHANUMERIC: /^[a-zA-Z0-9]+$/,
+};
+
+export const emptyState = {
+  title: "No Data found",
+  subtitle: "We couldn't find any data to display",
+  icon: (
+    <Img
+      height={118}
+      width={152}
+      alt=""
+      isLocal
+      src="/images/emptyState.png"
+    />
+  ),
+  btnProps: {
+    btnName: "Go Back",
+    icon: <FaArrowLeft size={16} className="text-white" />,
+  },
 };

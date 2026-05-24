@@ -2,8 +2,8 @@ import {
   createOrder,
   getOutletOrders,
 } from "@/lib/apis";
-import { ORDER_API_BASE_URL } from "@/lib/apiConstant";
-import { apiErrorMessage } from "@/utils/apiError";
+import { apiErrorMessage, getServiceBaseUrl } from "@/lib/apiConstant";
+import { MicroService } from "@/utils/enum";
 import { queryKeys } from "@/utils/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, type FormEvent } from "react";
@@ -78,7 +78,7 @@ export function useHook() {
     listError,
     loadOrders,
     handleSubmit,
-    orderApiBaseUrl: ORDER_API_BASE_URL,
+    orderApiBaseUrl: getServiceBaseUrl(MicroService.ORDER),
     isOrdersLoading: isLoading || isFetching,
   };
 }

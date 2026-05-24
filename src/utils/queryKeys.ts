@@ -4,11 +4,11 @@ export const queryKeys = {
     outlet: (outletId: string) => ["orders", "outlet", outletId] as const,
   },
   outlets: {
-    list: (filter: string, search: string) =>
-      ["outlets", "list", filter, search] as const,
+    all: ["outlets"] as const,
+    list: () => ["outlets", "list"] as const,
   },
   menu: {
-    list: (outletId: string, category: string, search: string) =>
-      ["menu", "list", outletId, category, search] as const,
+    all: ["menu"] as const,
+    list: (outletId: string) => ["menu", "list", outletId] as const,
   },
 } as const;
