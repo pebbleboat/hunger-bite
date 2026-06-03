@@ -10,6 +10,7 @@ import { FiEdit2, FiShoppingBag } from "react-icons/fi";
 type ItemsForReviewCardProps = {
   cartLines: CartLine[];
   formatPrice: (amount: number) => string;
+  menuHref: string;
   onUpdateQuantity: (itemId: string, delta: number) => void;
   onRemove: (itemId: string) => void;
 };
@@ -17,6 +18,7 @@ type ItemsForReviewCardProps = {
 const ItemsForReviewCard = ({
   cartLines,
   formatPrice,
+  menuHref,
   onUpdateQuantity,
   onRemove,
 }: ItemsForReviewCardProps) => {
@@ -44,7 +46,7 @@ const ItemsForReviewCard = ({
 
       <div className="border-t border-gray-100 px-5 py-4">
         <Link
-          href="/menu"
+          href={menuHref}
           className="inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-800"
         >
           <FiEdit2 className="h-4 w-4" />

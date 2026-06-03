@@ -1,16 +1,55 @@
 "use client";
 
 import { getOutlets } from "@/lib/apis";
-import type { Outlet, OutletFilterId } from "@/lib/types";
+import type {
+  CatalogOutletRecord,
+  Outlet,
+  OutletFilterId,
+} from "@/lib/types";
 import { showToast } from "@/shared/ToastMessage";
 import type { AuthUser } from "@/utils/authSession";
 import { storageKeys } from "@/utils/enum";
 import { getLocalItem } from "@/utils/localstorage";
 import { persistSelectedOutlet } from "@/utils/outletSession";
+import { menuPath } from "@/utils/routes";
 import { queryKeys } from "@/utils/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+
+const DEFAULT_OUTLET_IMAGE =
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
+
+function mapCatalogOutletToOutlet(
+  raw: CatalogOutletRecord,
+  featured: boolean,
+): Outlet {
+  const locationParts = [raw.address, raw.city].filter(Boolean);
+  const description =
+    locationParts.length > 0
+      ? locationParts.join(" · ")
+      : "Order pickup and dine-in available.";
+
+  let openUntil = "Hours vary";
+  if (raw.schedule?.endTime) {
+    openUntil = raw.schedule.endTime;
+  } else if (raw.status === "open") {
+    openUntil = "Open now";
+  } else if (raw.status === "closed") {
+    openUntil = "Closed";
+  }
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    description,
+    rating: typeof raw.rating === "number" ? raw.rating : 4.5,
+    distanceMiles: raw.location?.distance ?? 0,
+    openUntil,
+    imageUrl: raw.image?.trim() || DEFAULT_OUTLET_IMAGE,
+    featured,
+  };
+}
 
 function filterOutlets(
   outlets: Outlet[],
@@ -64,7 +103,13 @@ export function useHook() {
     refetch,
   } = useQuery({
     queryKey: queryKeys.outlets.list(),
-    queryFn: getOutlets,
+    queryFn: async () => {
+      const data = await getOutlets();
+      if (!Array.isArray(data)) return [];
+      return data.map((raw, index) =>
+        mapCatalogOutletToOutlet(raw, index === 0),
+      );
+    },
   });
 
   const filteredOutlets = useMemo(
@@ -79,7 +124,7 @@ export function useHook() {
     setSelectingId(outlet.id);
     try {
       persistSelectedOutlet(outlet);
-      router.push("/menu");
+      router.push(menuPath(outlet.id));
     } catch {
       showToast({ type: "error", title: "Could not select outlet" });
       setSelectingId(null);

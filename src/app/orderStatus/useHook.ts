@@ -2,6 +2,7 @@
 
 import { getPlacedOrder } from "@/utils/orderSession";
 import { formatPrice } from "@/utils/formatPrice";
+import { getSelectedMenuPath } from "@/utils/routes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { PlacedOrder } from "@/lib/types";
@@ -14,7 +15,8 @@ export function useHook() {
   useEffect(() => {
     const placed = getPlacedOrder();
     if (!placed) {
-      router.replace("/menu");
+      const menuHref = getSelectedMenuPath();
+      router.replace(menuHref ?? "/select-outlet");
       return;
     }
     setOrder(placed);

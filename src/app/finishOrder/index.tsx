@@ -10,6 +10,7 @@ import ItemsForReviewCard from "./components/ItemsForReviewCard";
 import OrderDetailsCard from "./components/OrderDetailsCard";
 import OrderInstructionsCard from "./components/OrderInstructionsCard";
 import OrderTotalCard from "./components/OrderTotalCard";
+import { menuPath } from "@/utils/routes";
 import { useHook } from "./useHook";
 
 export function FinishOrder() {
@@ -50,7 +51,7 @@ export function FinishOrder() {
       <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
         <div className="mb-6 flex items-center gap-3">
           <Link
-            href="/menu"
+            href={outlet ? menuPath(outlet.id) : "/select-outlet"}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-brand-950 hover:bg-white"
             aria-label="Back to menu"
           >
@@ -66,6 +67,7 @@ export function FinishOrder() {
             <ItemsForReviewCard
               cartLines={cartLines}
               formatPrice={formatPrice}
+              menuHref={outlet ? menuPath(outlet.id) : "/select-outlet"}
               onUpdateQuantity={updateQuantity}
               onRemove={removeFromCart}
             />

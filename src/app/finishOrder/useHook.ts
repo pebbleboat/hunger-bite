@@ -1,21 +1,21 @@
 "use client";
 
 import type { AuthUser } from "@/utils/authSession";
-import { clearCart, getCart, persistCart, updateCartInstructions } from "@/utils/cartSession";
 import {
   buildPlacedOrderFromCart,
   persistPlacedOrder,
 } from "@/utils/orderSession";
 import { storageKeys } from "@/utils/enum";
 import { formatPrice, TAX_RATE } from "@/utils/formatPrice";
-import { getLocalItem } from "@/utils/localstorage";
+import { getLocalItem, removeLocalItem, setLocalItem } from "@/utils/localstorage";
 import { getSelectedOutlet } from "@/utils/outletSession";
+import { menuPath } from "@/utils/routes";
 import { showToast } from "@/shared/ToastMessage";
 import { apiErrorMessage } from "@/lib/apiConstant";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { CartLine, Outlet } from "@/lib/types";
+import type { CartDraft, CartLine, Outlet } from "@/lib/types";
 
 export function useHook() {
   const router = useRouter();
@@ -31,13 +31,13 @@ export function useHook() {
 
   useEffect(() => {
     const selectedOutlet = getSelectedOutlet();
-    const cart = getCart();
+    const cart = getLocalItem<CartDraft>(storageKeys.CART);
     if (!selectedOutlet) {
       router.replace("/select-outlet");
       return;
     }
     if (!cart?.lines?.length) {
-      router.replace("/menu");
+      router.replace(menuPath(selectedOutlet.id));
       return;
     }
     setOutlet(selectedOutlet);
@@ -59,47 +59,45 @@ export function useHook() {
 
   useEffect(() => {
     if (!ready) return;
-    if (cartLines.length === 0) {
-      router.replace("/menu");
-      return;
+    if (cartLines.length === 0 && outlet?.id) {
+      router.replace(menuPath(outlet.id));
     }
-    persistCart(cartLines, instructions);
-  }, [cartLines, instructions, ready, router]);
+  }, [cartLines.length, ready, router, outlet?.id]);
 
   const handleInstructionsChange = (value: string) => {
     setInstructions(value);
-    updateCartInstructions(value);
+    setLocalItem(storageKeys.CART, { lines: cartLines, instructions: value });
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
-    setCartLines((prev) =>
-      prev
-        .map((line) =>
-          line.item.id === itemId
-            ? { ...line, quantity: line.quantity + delta }
-            : line,
-        )
-        .filter((line) => line.quantity > 0),
-    );
+    const next = cartLines
+      .map((line) =>
+        line.item.id === itemId
+          ? { ...line, quantity: line.quantity + delta }
+          : line,
+      )
+      .filter((line) => line.quantity > 0);
+    setCartLines(next);
+    setLocalItem(storageKeys.CART, { lines: next, instructions });
   };
 
   const removeFromCart = (itemId: string) => {
-    setCartLines((prev) => prev.filter((line) => line.item.id !== itemId));
+    const next = cartLines.filter((line) => line.item.id !== itemId);
+    setCartLines(next);
+    setLocalItem(storageKeys.CART, { lines: next, instructions });
   };
 
   const { mutate: placeOrder, isPending: isPlacingOrder } = useMutation({
     mutationFn: async () => {
       if (!outlet) throw new Error("No outlet selected");
-      persistCart(cartLines, instructions);
-      // TODO: wire create-order API in lib/apis.ts
-      await new Promise((r) => setTimeout(r, 600));
+      setLocalItem(storageKeys.CART, { lines: cartLines, instructions });
       const placed = buildPlacedOrderFromCart(
         cartLines,
         outlet,
         instructions,
       );
       persistPlacedOrder(placed);
-      clearCart();
+      removeLocalItem(storageKeys.CART);
       return placed;
     },
     onSuccess: () => {

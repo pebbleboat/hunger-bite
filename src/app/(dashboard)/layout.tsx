@@ -3,26 +3,31 @@
 import PageWrapper from "@/components/pageWrapper";
 import { getLocalItem } from "@/utils/localstorage";
 import { storageKeys } from "@/utils/enum";
+import { isMenuPath } from "@/utils/routes";
 import { usePathname, useRouter } from "next/navigation";
 import { FC, PropsWithChildren, useEffect, useState } from "react";
 import Loader from "@/shared/Loader";
 
 const HUNGERBITE_SHELL_PATHS = [
   "/select-outlet",
-  "/menu",
   "/finish-order",
   "/order-status",
   "/profile",
 ];
+
+function usesHungerBiteShell(pathname: string): boolean {
+  if (isMenuPath(pathname)) return true;
+  return HUNGERBITE_SHELL_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
 
 const DashboardLayout: FC<PropsWithChildren> = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
 
-  const useHungerBiteShell = HUNGERBITE_SHELL_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  const useHungerBiteShell = usesHungerBiteShell(pathname);
 
   useEffect(() => {
     const token =

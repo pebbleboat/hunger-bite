@@ -1,3 +1,28 @@
+export type CatalogOutletRecord = {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  status?: string;
+  isAcceptingOrders?: boolean;
+  rating?: number;
+  image?: string;
+  location?: { distance?: number };
+  schedule?: { startTime?: string; endTime?: string };
+};
+
+export type CatalogMenuItemRecord = {
+  id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  status?: string;
+  category?: string;
+  image?: string;
+  dietary?: string;
+};
+
 export type Outlet = {
   id: string;
   name: string;
@@ -34,6 +59,11 @@ export type CartLine = {
   note?: string;
 };
 
+export type CartDraft = {
+  lines: CartLine[];
+  instructions?: string;
+};
+
 export type OrderStatusStage =
   | "acceptance_pending"
   | "preparing"
@@ -66,10 +96,18 @@ export type PlacedOrder = {
   steps: OrderStatusStep[];
 };
 
-export type OrderRow = {
-  _id: string;
-  item: string;
+export type CreateOrderLinePayload = {
+  id: string;
   quantity: number;
+};
+
+export type CreateOrderPayload = {
+  items: CreateOrderLinePayload[];
+};
+
+export type OrderRow = {
+  id: string;
+  items: CreateOrderLinePayload[];
   status?: string;
   outletId?: string;
 };

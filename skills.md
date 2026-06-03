@@ -98,11 +98,57 @@ For each feature (e.g. `orderForm`, `(auth)/login`):
 ```ts
 await axiosInstance(MicroService.AUTH).post(AUTH_PATHS.login, payload);
 await axiosInstance(MicroService.CATALOG).get(API_PATHS.outlets);
-await axiosInstance(MicroService.ORDER).get(API_PATHS.outletOrders(id));
+await axiosInstance(MicroService.ORDER).post(API_PATHS.createOrder(outletId), body);
 ```
 
 - **All HTTP functions** live in **`lib/apis.ts` only**. Do not add a second axios client or duplicate API modules.
 - Path builders, env defaults, and `apiErrorMessage` live in **`lib/apiConstant.ts`**.
+
+### `lib/apis.ts` — API calls only (required)
+
+Each function in **`lib/apis.ts`** must do **only**:
+
+1. Call `axiosInstance(MicroService.*)` with the correct path.
+2. **`return data`** from the response.
+
+**Do not** put in `apis.ts`:
+
+- Mapping / normalizing API records into UI types.
+- `Array.isArray` guards, filters, or default empty arrays.
+- Helper functions such as `mapCatalog*`, `mapOrder*`, `String(raw…)`, or `Record<string, unknown>` casts.
+- `_id` fallbacks — the backend returns **`id`**; type and use **`id`** only.
+
+Put transforms in the feature’s **`useHook.ts`** (inside `queryFn` / `mutationFn`), or a small feature-local util (e.g. `menu/utils/menuFormPayload.ts`) when the UI needs extra fields.
+
+**Raw API shapes** belong in **`lib/types.ts`** (e.g. `CatalogOutletRecord`, `CatalogMenuItemRecord`, `OrderRow`). UI types (`Outlet`, `MenuItem`, …) are what hooks return to components.
+
+**Example — correct `apis.ts`:**
+
+```ts
+export async function getOutlets() {
+  const { data } = await axiosInstance(MicroService.CATALOG).get<CatalogOutletRecord[]>(
+    API_PATHS.outlets,
+  );
+  return data;
+}
+```
+
+**Example — correct `useHook.ts`:**
+
+```ts
+queryFn: async () => {
+  const data = await getOutlets();
+  if (!Array.isArray(data)) return [];
+  return data.map((raw, index) => mapOutletForUi(raw, index === 0));
+},
+```
+
+Keep mapping **direct**: assign `id: raw.id`, spread or pick fields the UI needs. Avoid extra layers (nested mappers, type predicates, `String()` everywhere) unless there is a real business rule (e.g. filter unavailable menu items).
+
+### Orders (customer app)
+
+- **Create order:** `POST /outlet/:outletId/create-order` with body `{ items: [{ id: string, quantity: number }] }`.
+- List/detail order types use **`id`**, not `_id`.
 
 ---
 
@@ -127,10 +173,11 @@ await axiosInstance(MicroService.ORDER).get(API_PATHS.outletOrders(id));
 - Public routes: `/login`, `/signup`, `/forgot-password` (listed in `middleware.ts`).
 - Unauthenticated users → redirect to `/login`.
 - **After login** → `/select-outlet` (not `/`).
-- **After outlet selected** → `/menu` (outlet stored via `utils/outletSession.ts`).
-- Authenticated users on `/login` or `/signup` → `/select-outlet` or `/menu` if outlet cookie exists.
-- `/` redirects to `/select-outlet` or `/menu` when logged in.
-- `/menu` without selected outlet → `/select-outlet`.
+- **After outlet selected** → `/:outletId/menu` (outlet stored via `utils/outletSession.ts`; route helper `menuPath(outletId)` in `utils/routes.ts`).
+- Authenticated users on `/login` or `/signup` → `/select-outlet` or outlet menu if outlet cookie exists.
+- `/` redirects to `/select-outlet` or outlet menu when logged in.
+- `/:outletId/menu` without selected outlet → `/select-outlet`.
+- Legacy `/menu` redirects to `/:outletId/menu` when outlet is in cookie (`middleware.ts`).
 - Session: `utils/authSession.ts` (cookie + localStorage). Clear outlet on logout.
 - Login UI: centered layout + `CardWrapper` + `Text` / `TextWithLinks` (see `(auth)/login/page.tsx`).
 - **Forgot password** (`/forgot-password`): step 1 confirm email → step 2 new password + confirm password. APIs: `requestPasswordReset`, `resetPassword` in `lib/apis.ts` (`AUTH_PATHS.forgotPassword`, `resetPassword`). Link from login “Forgot Password?”.
@@ -139,19 +186,19 @@ await axiosInstance(MicroService.ORDER).get(API_PATHS.outletOrders(id));
 
 - Route: `/select-outlet` → `(dashboard)/select-outlet/page.tsx` → `@/app/selectOutlet`.
 - UI: `HungerBiteNavbar` + welcome header + `FilterBar` + outlet grid (`FeaturedOutletCard`, `OutletCard`).
-- Outlets: `getOutlets()` in `lib/apis.ts` → `axiosInstance(MicroService.CATALOG).get(API_PATHS.outlets)` (maps catalog records to `Outlet` UI type).
+- Outlets: `getOutlets()` in `lib/apis.ts` returns raw records; `selectOutlet/useHook.ts` maps to `Outlet` UI type.
 - Uses `useQuery` in `selectOutlet/useHook.ts` with `queryKeys.outlets.list()`; client-side filter/search in the hook.
-- Dashboard layout skips `PageWrapper` for `/select-outlet` and `/menu` (custom shell).
+- Dashboard layout skips `PageWrapper` for `/select-outlet` and outlet menu routes (custom shell).
 
-## Menu screen (`/menu`)
+## Menu screen (`/:outletId/menu`)
 
-- Route: `(dashboard)/menu/page.tsx` → `@/app/menu`.
+- Route: `(dashboard)/[outletId]/menu/page.tsx` → `@/app/menu`.
 - Layout: `HungerBiteNavbar` (search placeholder **Search menu**, Home active) + category chips + **3-column menu grid** + **CartSidebar** (~380px).
-- Menu items: `getMenuItems(outletId)` in `lib/apis.ts` → `axiosInstance(MicroService.CATALOG).get(API_PATHS.menuItems(outletId))`; only `available` items are shown.
+- Menu items: `getMenuItems(outletId)` in `lib/apis.ts` returns raw catalog records; `menu/useHook.ts` maps to `MenuItem` and filters `available` items.
 - Uses `useQuery` in `menu/useHook.ts` with `queryKeys.menu.list(outletId)`; category chips are built from API categories; search/filter client-side.
-- Cart state is local in `useHook` until order APIs exist; all copy via `Text`.
+- Cart: `getLocalItem` / `setLocalItem` with `storageKeys.CART` (no `cartSession` helper module).
+- **Review Order** calls `createOrder` then navigates to `/finish-order`.
 - Components: `MenuCategoryFilters`, `MenuItemCard` (`CardWrapper`), `CartSidebar`.
-- **Review Order** → `/finish-order`; cart persisted in `utils/cartSession.ts`.
 
 ## Finish order screen (`/finish-order`)
 
@@ -216,6 +263,7 @@ Reuse before creating new primitives:
 - **Minimal diff** — only change what the task needs.
 - **Match existing patterns** — naming, imports, file placement.
 - **No over-abstraction** — no one-line helpers unless reused.
+- **No over-optimized data layers** — avoid redundant mapper helpers, `String()` on every field, and type-predicate filter chains when a direct assign or `?? []` is enough (see API layer above).
 - **Comments** only for non-obvious business logic.
 - **Tests** only when asked or when they add real coverage.
 
@@ -230,7 +278,8 @@ Reuse before creating new primitives:
 ## Quick checklist (new feature)
 
 - [ ] Route uses `app/.../page.tsx` + `useHook.ts`
-- [ ] API call added to `lib/apis.ts` with correct `baseURL`
+- [ ] API call in `lib/apis.ts` only (`return data`; no mappers in `apis.ts`)
+- [ ] Transforms in `useHook.ts`; backend fields use `id` not `_id`
 - [ ] Yup schema in `utils/schema.ts` if there is a form
 - [ ] React Query in `useHook.ts`, not a separate hooks file
 - [ ] Auth role `"customer"` for login/signup payloads

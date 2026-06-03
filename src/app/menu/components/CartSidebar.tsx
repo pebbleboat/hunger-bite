@@ -23,6 +23,7 @@ type CartSidebarProps = {
   onUpdateQuantity: (itemId: string, delta: number) => void;
   onRemove: (itemId: string) => void;
   onReviewOrder: () => void;
+  isReviewingOrder?: boolean;
 };
 
 const SIDEBAR_NAV = [
@@ -41,6 +42,7 @@ const CartSidebar = ({
   onUpdateQuantity,
   onRemove,
   onReviewOrder,
+  isReviewingOrder = false,
 }: CartSidebarProps) => {
   return (
     <CardWrapper className="flex h-full min-h-[calc(100vh-8rem)] flex-col border-gray-200 !p-0 shadow-sm lg:sticky lg:top-24">
@@ -110,8 +112,9 @@ const CartSidebar = ({
           fullWidth
           size="lg"
           className="!mt-4 !rounded-xl !bg-brand-950 hover:!bg-brand-900"
-          btnName="Review Order"
-          disabled={cartLines.length === 0}
+          btnName={isReviewingOrder ? "Submitting order…" : "Review Order"}
+          disabled={cartLines.length === 0 || isReviewingOrder}
+          isLoading={isReviewingOrder}
           onClick={onReviewOrder}
         />
       </div>

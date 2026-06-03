@@ -5,7 +5,7 @@ import type { AuthUser } from "@/utils/authSession";
 import { storageKeys } from "@/utils/enum";
 import { getLocalItem } from "@/utils/localstorage";
 import { buildUserProfile } from "@/utils/mockProfile";
-import { getCart } from "@/utils/cartSession";
+import type { CartDraft } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 
 export function useHook() {
@@ -22,7 +22,10 @@ export function useHook() {
   }, []);
 
   const cartCount =
-    getCart()?.lines.reduce((n, line) => n + line.quantity, 0) ?? 0;
+    getLocalItem<CartDraft>(storageKeys.CART)?.lines.reduce(
+      (n, line) => n + line.quantity,
+      0,
+    ) ?? 0;
 
   return {
     ready,

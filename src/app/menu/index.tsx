@@ -11,8 +11,6 @@ import { useHook } from "./useHook";
 
 export function Menu() {
   const {
-    outlet,
-    ready,
     search,
     setSearch,
     activeCategory,
@@ -20,8 +18,6 @@ export function Menu() {
     categories,
     filteredItems,
     isLoading,
-    isError,
-    refetch,
     cartLines,
     addToCart,
     updateQuantity,
@@ -32,32 +28,23 @@ export function Menu() {
     formatPrice,
     cartCount,
     handleReviewOrder,
+    isReviewingOrder,
   } = useHook();
 
-  if (!ready) {
-    return <Loader className="h-screen" size={28} variant="full-screen" />;
-  }
+  // if (!ready) {
+  //   return <Loader className="h-screen" size={28} variant="full-screen" />;
+  // }
 
-  const emptyStateData = isError
-    ? {
-        title: "Could not load menu",
-        subtitle:
-          "Check that the catalog service is running and try again.",
-        btnProps: {
-          btnName: "Try again",
-          onClick: () => refetch(),
-        },
-      }
-    : {
-        title:
-          search.trim() || activeCategory !== "all"
-            ? "No items found"
-            : "Menu is empty",
-        subtitle:
-          search.trim() || activeCategory !== "all"
-            ? "No menu items match your search or filter."
-            : "This outlet has not added any items yet.",
-      };
+  const emptyStateData = {
+    title:
+      search.trim() || activeCategory !== "all"
+        ? "No items found"
+        : "Menu is empty",
+    subtitle:
+      search.trim() || activeCategory !== "all"
+        ? "No menu items match your search or filter."
+        : "This outlet has not added any items yet.",
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,7 +58,8 @@ export function Menu() {
       <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
         <div className="mb-6 lg:hidden">
           <Text size="sm" variant="tertiary">
-            {outlet?.name}
+            {/* {outlet?.name} */}
+            aasda{" "}
           </Text>
         </div>
 
@@ -86,9 +74,8 @@ export function Menu() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1">
             <EmptyState
-              pageData={isLoading ? null : isError ? [] : filteredItems}
+              pageData={isLoading ? null : filteredItems}
               data={emptyStateData}
-              hideBtn={!isError}
               loaderClass="py-20"
             >
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -114,6 +101,7 @@ export function Menu() {
               onUpdateQuantity={updateQuantity}
               onRemove={removeFromCart}
               onReviewOrder={handleReviewOrder}
+              isReviewingOrder={isReviewingOrder}
             />
           </aside>
         </div>

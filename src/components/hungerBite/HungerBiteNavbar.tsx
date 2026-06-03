@@ -5,13 +5,13 @@ import MenuPopover from "@/shared/popover/MenuPopover";
 import InputField from "@/shared/input/InputField";
 import Text from "@/shared/heading/Text";
 import { clearAuthSession } from "@/utils/authSession";
+import { getSelectedMenuPath, isMenuPath } from "@/utils/routes";
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FiLogOut, FiSearch, FiShoppingCart, FiUser } from "react-icons/fi";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/menu", id: "home" as const },
   { label: "Orders", href: "/order-status", id: "orders" as const },
   { label: "Profile", href: "/profile", id: "profile" as const },
 ] as const;
@@ -35,6 +35,7 @@ const HungerBiteNavbar = ({
 }: HungerBiteNavbarProps) => {
   const pathname = usePathname();
   const router = useRouter();
+  const homeHref = getSelectedMenuPath() ?? "/select-outlet";
 
   const handleLogout = () => {
     clearAuthSession();
@@ -45,7 +46,7 @@ const HungerBiteNavbar = ({
     activeNav ??
     (pathname === "/order-status" || pathname === "/finish-order"
       ? "orders"
-      : pathname === "/menu"
+      : isMenuPath(pathname)
         ? "home"
         : pathname.startsWith("/profile")
           ? "profile"
@@ -73,6 +74,21 @@ const HungerBiteNavbar = ({
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
+          <Link href={homeHref}>
+            <Text
+              as="span"
+              size="sm"
+              type="medium"
+              className={clsx(
+                "pb-0.5 transition-colors",
+                resolvedActive === "home"
+                  ? "border-b-2 border-brand-950 text-brand-950"
+                  : "text-gray-500 hover:text-brand-950",
+              )}
+            >
+              Home
+            </Text>
+          </Link>
           {NAV_ITEMS.map((item) => {
             const isActive = resolvedActive === item.id;
             return (

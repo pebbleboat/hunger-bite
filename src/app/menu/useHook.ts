@@ -1,15 +1,43 @@
 "use client";
 
-import { getMenuItems } from "@/lib/apis";
-import type { CartLine, MenuCategoryId, MenuItem, Outlet } from "@/lib/types";
+import { apiErrorMessage } from "@/lib/apiConstant";
+import { createOrder, getMenuItems } from "@/lib/apis";
+import type {
+  CartDraft,
+  CartLine,
+  CatalogMenuItemRecord,
+  MenuCategoryId,
+  MenuItem,
+} from "@/lib/types";
 import { showToast } from "@/shared/ToastMessage";
-import { getCart, persistCart } from "@/utils/cartSession";
+import { storageKeys } from "@/utils/enum";
 import { formatPrice, TAX_RATE } from "@/utils/formatPrice";
-import { getSelectedOutlet } from "@/utils/outletSession";
+import { getLocalItem, setLocalItem } from "@/utils/localstorage";
 import { queryKeys } from "@/utils/queryKeys";
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { menuPath } from "@/utils/routes";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+const DEFAULT_MENU_ITEM_IMAGE =
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
+
+function isMenuItemAvailable(status?: string): boolean {
+  const value = (status ?? "available").toLowerCase().replace(/\s+/g, "_");
+  return value === "available";
+}
+
+function mapCatalogMenuItem(raw: CatalogMenuItemRecord): MenuItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    description: raw.description ?? "",
+    price: raw.price ?? 0,
+    imageUrl: raw.image?.trim() || DEFAULT_MENU_ITEM_IMAGE,
+    category: raw.category ?? "default",
+    dietary: raw.dietary,
+  };
+}
 
 function formatCategoryLabel(value: string): string {
   return value
@@ -21,43 +49,32 @@ function formatCategoryLabel(value: string): string {
 
 export function useHook() {
   const router = useRouter();
-  const [outlet, setOutlet] = useState<Outlet | null>(null);
-  const [ready, setReady] = useState(false);
+  const params = useParams();
+  const outletId = String(params.outletId ?? "");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<MenuCategoryId>("all");
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
 
   useEffect(() => {
-    const selected = getSelectedOutlet();
-    if (!selected) {
-      router.replace("/select-outlet");
-      return;
-    }
-    setOutlet(selected);
-    const savedCart = getCart();
-    if (savedCart?.lines?.length) {
-      setCartLines(savedCart.lines);
-    }
-    setReady(true);
-  }, [router]);
-
-  useEffect(() => {
-    if (!ready) return;
-    persistCart(cartLines);
-  }, [cartLines, ready]);
+    const savedCart = getLocalItem<CartDraft>(storageKeys.CART);
+    setCartLines(savedCart?.lines ?? []);
+  }, [outletId]);
 
   const {
     data: menuItems = [],
-    isFetching: isMenuFetching,
-    isError,
+    isLoading,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.menu.list(outlet?.id ?? ""),
-    queryFn: () => getMenuItems(outlet!.id),
-    enabled: Boolean(outlet?.id),
+    queryKey: queryKeys.menu.list(outletId ?? ""),
+    queryFn: async () => {
+      const data = await getMenuItems(outletId);
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter((item) => isMenuItemAvailable(item.status))
+        .map(mapCatalogMenuItem);
+    },
+    enabled: Boolean(outletId),
   });
-
-  const isLoading = Boolean(outlet?.id) && isMenuFetching;
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(menuItems.map((item) => item.category)));
@@ -100,17 +117,16 @@ export function useHook() {
   const total = useMemo(() => subtotal + tax, [subtotal, tax]);
 
   const addToCart = (item: MenuItem) => {
-    setCartLines((prev) => {
-      const existing = prev.find((line) => line.item.id === item.id);
-      if (existing) {
-        return prev.map((line) =>
+    const existing = cartLines.find((line) => line.item.id === item.id);
+    const next = existing
+      ? cartLines.map((line) =>
           line.item.id === item.id
             ? { ...line, quantity: line.quantity + 1 }
             : line,
-        );
-      }
-      return [...prev, { item, quantity: 1 }];
-    });
+        )
+      : [...cartLines, { item, quantity: 1 }];
+    setCartLines(next);
+    setLocalItem(storageKeys.CART, { lines: next });
     showToast({
       type: "success",
       title: "Added to cart",
@@ -119,30 +135,54 @@ export function useHook() {
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
-    setCartLines((prev) =>
-      prev
-        .map((line) =>
-          line.item.id === itemId
-            ? { ...line, quantity: line.quantity + delta }
-            : line,
-        )
-        .filter((line) => line.quantity > 0),
-    );
+    const next = cartLines
+      .map((line) =>
+        line.item.id === itemId
+          ? { ...line, quantity: line.quantity + delta }
+          : line,
+      )
+      .filter((line) => line.quantity > 0);
+    setCartLines(next);
+    setLocalItem(storageKeys.CART, { lines: next });
   };
 
   const removeFromCart = (itemId: string) => {
-    setCartLines((prev) => prev.filter((line) => line.item.id !== itemId));
+    const next = cartLines.filter((line) => line.item.id !== itemId);
+    setCartLines(next);
+    setLocalItem(storageKeys.CART, { lines: next });
   };
 
+  const { mutate: reviewOrder, isPending: isReviewingOrder } = useMutation({
+    mutationFn: () =>
+      createOrder(outletId, {
+        items: cartLines.map((line) => ({
+          id: line.item.id,
+          quantity: line.quantity,
+        })),
+      }),
+    onSuccess: () => {
+      setLocalItem(storageKeys.CART, { lines: cartLines });
+      showToast({
+        type: "success",
+        title: "Order submitted",
+        subtitle: "Continue to review your order details.",
+      });
+      router.push("/finish-order");
+    },
+    onError: (err) => {
+      showToast({
+        type: "error",
+        title: apiErrorMessage(err, "Could not create order"),
+      });
+    },
+  });
+
   const handleReviewOrder = () => {
-    if (cartLines.length === 0) return;
-    persistCart(cartLines);
-    router.push("/finish-order");
+    if (cartLines.length === 0 || isReviewingOrder) return;
+    reviewOrder();
   };
 
   return {
-    outlet,
-    ready,
     search,
     setSearch,
     activeCategory,
@@ -150,7 +190,6 @@ export function useHook() {
     categories,
     filteredItems,
     isLoading,
-    isError,
     refetch,
     cartLines,
     addToCart,
@@ -162,5 +201,6 @@ export function useHook() {
     formatPrice,
     cartCount: cartLines.reduce((n, line) => n + line.quantity, 0),
     handleReviewOrder,
+    isReviewingOrder,
   };
 }
